@@ -5,6 +5,7 @@ const mongoose = require("mongoose");
 const Pusher = require("pusher");
 const Messages = require("./dbmessages.js");
 const cors = require("cors");
+
 // app config
 const app = express();
 const port = process.env.PORT || 9000;
@@ -90,6 +91,9 @@ app.get("/messages/sync", (req, res) => {
     }
   });
 });
+
+const authRoutes = require("./routes/auth.js");
+app.use("/api", authRoutes);
 
 //listener
 app.listen(port, () => {
