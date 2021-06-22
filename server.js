@@ -4,6 +4,7 @@ const env = require("dotenv").config();
 const mongoose = require("mongoose");
 const Pusher = require("pusher");
 const Messages = require("./dbmessages.js");
+const User = require("./models/user.js");
 const cors = require("cors");
 
 // app config
@@ -49,15 +50,18 @@ db.once("open", () => {
   const msgCollection = db.collection("mesagecontents");
   const changeStream = msgCollection.watch();
   changeStream.on("change", (change) => {
-    console.log("A change occured", change);
+    // console.log("A change occured", change);
     if (change.operationType === "insert") {
       const messageDetails = change.fullDocument;
-      pusher.trigger("messages", "inserted", {
-        name: messageDetails.name,
-        message: messageDetails.message,
-        timestamp: messageDetails.timestamp,
-        received: messageDetails.received,
-      });
+      console.log(messageDetails);
+      // pusher.trigger("messages", "inserted", {
+      //   name: messageDetails.name,
+      //   message: messageDetails.message,
+      //   toUser: messageDetails.toUser,
+      //   fromUser: messageDetails.fromUser,
+
+      // });
+      pusher.trigger("messages", "inserted", messageDetails);
     } else {
       console.log("error triggering pusher");
     }
@@ -71,9 +75,31 @@ app.get("/", (req, res) => {
   res.status(200).send("hello world");
 });
 
-app.post("/messages/new", (req, res) => {
+app.post("/messages/new", async (req, res) => {
   const dbMessage = req.body;
+  let toUser = await User.findOne({
+    _id: mongoose.Types.ObjectId(dbMessage.toUser),
+  });
+  let fromUser = await User.findOne({
+    _id: mongoose.Types.ObjectId(dbMessage.fromUser),
+  });
+  // console.log("toUser:", toUser, "fromUser:", fromUser);
+  // dbMessage.toUser = mongoose.Types.ObjectId(dbMessage.toUser);
+  // dbMessage.fromUser = mongoose.Types.ObjectId(dbMessage.fromUser);
+  dbMessage.toUser = toUser;
+  dbMessage.fromUser = fromUser;
+  // console.log("dbmessage:", dbMessage);
   Messages.create(dbMessage, (err, data) => {
+    if (err) {
+      res.status(500).send(err);
+    } else {
+      res.status(201).json(data);
+    }
+  });
+});
+
+app.get("/getAllUsers", (req, res) => {
+  User.find({}, (err, data) => {
     if (err) {
       res.status(500).send(err);
     } else {
